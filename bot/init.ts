@@ -37,7 +37,7 @@ export const commandArray: commandType[] = [
         run: command.battle
     },
     {
-        name: "selectfighter",
+        name: "select",
         run: command.selectFighter
     },
     {

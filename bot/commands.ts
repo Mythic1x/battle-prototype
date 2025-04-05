@@ -63,7 +63,7 @@ export const displayFighters = async (client: Client, msg: Message, args: string
             .addFields({ name: "Magic", value: fighter.magic.toString() })
             .addFields({ name: "Dexterity", value: fighter.dexterity.toString() })
             .addFields({ name: "Luck", value: fighter.luck.toString() })
-            .addFields({ name: "Skills", value: Object.keys(fighter.skills).join(", ") })
+            .addFields({ name: "Skills", value: Object.keys(fighter.skills).map(skill => fighter.skills[skill].name).join(", ") })
             .setFooter({ text: `${i + 1}/${length}` })
         embeds.push(embed)
     }

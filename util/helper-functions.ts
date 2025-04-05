@@ -165,10 +165,10 @@ export const calculateDamage = (damage: skill['damage'], damageType: skill['type
 
 export const calculateHeal = (heal: skill['damage'], player: Player) => {
     const healMappings = {
-        light: range(5, 10),
-        medium: range(10, 25),
-        heavy: range(25, 50),
-        extreme: range(50, 100)
+        light: range(10, 25),
+        medium: range(25, 50),
+        heavy: range(50, 100),
+        extreme: range(100, 200)
     }
     return healMappings[heal]
 }

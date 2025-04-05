@@ -262,6 +262,7 @@ const handleBuff = async (
     if (battle.turnUser.sp - spCost < 0) {
         return i.reply({ content: "You do not have enough SP", ephemeral: true })
     }
+    battle.turnUser.sp -= spCost
     if (battle.turnUser.buffs.buffed === true && battle.turnUser.buffs[toBuff].amount) {
         console.log(battle.turnUser.buffs[toBuff])
        return  i.reply({ content: `your ${toBuff} is already buffed`, ephemeral: true })
@@ -304,6 +305,7 @@ const handleDebuff = async (
     if (battle.turnUser.sp - spCost < 0) {
         return i.reply({ content: "You do not have enough SP", ephemeral: true })
     }
+    battle.turnUser.sp -= spCost
     if (otherPlayer.debuffs.debuffed === true && otherPlayer.debuffs[toDebuff].amount) {
         return i.reply({ content: `other player's ${toDebuff} is already debuffed`, ephemeral: true })
     }
