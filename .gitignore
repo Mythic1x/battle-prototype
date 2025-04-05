@@ -1,0 +1,4 @@
+*js
+/.env
+/node_modules
+/data/user-data.json

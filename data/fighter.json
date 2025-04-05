@@ -1,0 +1,100 @@
+{
+    "fireGuy": {
+        "name": "FireGuy",
+        "type": "fire",
+        "level": 1,
+        "strength": 5,
+        "magic": 10,
+        "luck": 5,
+        "dexterity": 5,
+        "xp": 0,
+        "skills": [
+            "flame",
+            "strike"
+        ]
+    },
+    "waterGuy": {
+        "name": "WaterGuy",
+        "type": "water",
+        "level": 1,
+        "strength": 5,
+        "magic": 10,
+        "luck": 5,
+        "dexterity": 5,
+        "xp": 0,
+        "skills": [
+            "splash",
+            "strike"
+        ]
+    },
+    "iceGuy": {
+        "name": "IceGuy",
+        "type": "ice",
+        "level": 1,
+        "strength": 5,
+        "magic": 10,
+        "luck": 5,
+        "dexterity": 5,
+        "xp": 0,
+        "skills": [
+            "snowball",
+            "strike"
+        ]
+    },
+    "physicalGuy": {
+        "name": "PhysicalGuy",
+        "type": "strength",
+        "level": 1,
+        "strength": 7,
+        "magic": 3,
+        "luck": 5,
+        "dexterity": 8,
+        "xp": 0,
+        "skills": [
+            "strike"
+        ]
+    },
+    "lightningGuy": {
+        "name": "LightningGuy",
+        "type": "lightning",
+        "level": 1,
+        "strength": 5,
+        "magic": 10,
+        "luck": 5,
+        "dexterity": 5,
+        "xp": 0,
+        "skills": [
+            "lightning",
+            "strike"
+        ]
+    },
+    "trashGuy": {
+        "name": "TrashGuy",
+        "type": "strength",
+        "level": 1,
+        "strength": 1,
+        "magic": 1,
+        "luck": 0,
+        "dexterity": 0,
+        "xp": 0,
+        "skills": [
+            "strike",
+            "attackUp"
+        ]
+    },
+    "supportGuy": {
+        "name": "SupportGuy",
+        "type": "water",
+        "level": 1,
+        "strength": 1,
+        "magic": 10,
+        "luck": 5,
+        "dexterity": 5,
+        "xp": 0,
+        "skills": [
+            "heal",
+            "attackUp",
+            "defenseDown"
+        ]
+    }
+}

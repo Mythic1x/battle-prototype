@@ -1,0 +1,76 @@
+{
+    "flame": {
+        "damage": "light",
+        "spCost": 10,
+        "type": "fire",
+        "method": "attack",
+        "name": "Flame",
+        "description": "Burn your opponent with flames"
+    },
+    "snowball": {
+        "damage": "light",
+        "spCost": 10,
+        "type": "ice",
+        "method": "attack",
+        "name": "Snowball",
+        "description": "Deliver a cold punch with a snowball"
+    },
+    "splash": {
+        "damage": "light",
+        "spCost": 10,
+        "type": "water",
+        "method": "attack",
+        "name": "Splash",
+        "description": "Blind your opponents eyes with a deadly splash"
+    },
+    "strike": {
+        "damage": "light",
+        "spCost": 0,
+        "type": "strength",
+        "method": "attack",
+        "name": "Strike",
+        "description": "Punch your opponent"
+    },
+    "lightning": {
+        "damage": "light",
+        "spCost": 10,
+        "type": "lightning",
+        "method": "attack",
+        "name": "Lightning",
+        "description": "Shock your opponent with a strike of lightning"
+    },
+    "attackUp": {
+        "damage": "light",
+        "spCost": 20,
+        "type": "support",
+        "name": "Attack Up",
+        "method": "buff",
+        "buffValues": {
+            "amount": 10,
+            "length": 5,
+            "stat": "attack"
+        },
+        "description": "Raises your attack for 5 turns"
+    },
+    "defenseDown": {
+        "damage": "light",
+        "spCost": 20,
+        "type": "support",
+        "name": "Defense Down",
+        "method": "debuff",
+        "buffValues": {
+            "amount": 10,
+            "length": 5,
+            "stat": "defense"
+        },
+        "description": "Lowers your opponent's defense for 5 turns"
+    },
+    "heal": {
+        "damage": "light",
+        "spCost": 25,
+        "type": "support",
+        "name": "Heal",
+        "method": "heal",
+        "description": "Heal a small portion of your health"
+    }
+}
