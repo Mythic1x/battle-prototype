@@ -30,7 +30,7 @@ export const signUp = async (client: Client, msg: Message, args: string[]) => {
             userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.trashGuy], 100, 100, 0, 100, 100)
             saveData()
         } else if (answer === "yes" || answer === "y") {
-            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.fireGuy, fighters.waterGuy, fighters.iceGuy, fighters.physicalGuy, fighters.lightningGuy, fighters.supportGuy], 100, 100, 0, 100, 100)
+            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.fireGuy, fighters.waterGuy, fighters.iceGuy, fighters.physicalGuy, fighters.lightningGuy, fighters.supportGuy], 100, 100, 1, 100, 100)
             saveData()
             msg.channel.send("profile created")
         } else msg.channel.send("not an answer")
