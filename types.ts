@@ -76,6 +76,8 @@ export class Player extends User {
     xp: number
     maxSp: number
     maxHp: number
+    inventory: Item[]
+    money: number
     selectedFighter?: Fighter
     defending: boolean
     name: string
@@ -83,7 +85,7 @@ export class Player extends User {
     reflectingPhysical: boolean
     buffs: Buffs
     debuffs: Debuffs
-    constructor(client: Client<true>, data: User, level: number, fighters: Fighter[], health: number, sp: number, xp: number, maxSp: number, maxHp: number, selectedFighter?: Fighter) {
+    constructor(client: Client<true>, data: User, level: number, fighters: Fighter[], health: number, sp: number, xp: number, maxSp: number, maxHp: number, inventory: Item[], money: number, selectedFighter?: Fighter) {
         //@ts-ignore not dealing with discordjs's bs
         super(client, data)
         this.level = level
@@ -93,6 +95,8 @@ export class Player extends User {
         this.xp = xp
         this.maxSp = maxSp
         this.maxHp = maxHp
+        this.inventory = inventory
+        this.money = money
         this.selectedFighter = selectedFighter
         //placeholder incase the name doesn't get set properly in battleSetup
         this.name = this.displayName
@@ -122,6 +126,29 @@ export class Player extends User {
         this.level += 1
         saveData()
     }
+    addToInventory(item: Item) {
+        const itemToAdd = this.inventory.find(v => v.name === item.name)
+        if (!itemToAdd) {
+            this.inventory.push(item)
+            this.inventory[this.inventory.length - 1].owned++
+        }
+        else {
+            itemToAdd.owned++
+        }
+        saveData()
+    }
+    removeFromInventory(item: Item) {
+        const foundItem = this.inventory.find((v) => v.name === item.name)
+        if (!foundItem) return
+        const index = this.inventory.indexOf(foundItem)
+        foundItem.owned--
+        if (foundItem.owned <= 0) {
+            this.inventory.splice(index, 1)
+        }
+    }
+    ownsItem(item: Item) {
+        return this.inventory.find(v => v.name === item.name)
+    }
 }
 
 export class Battle {
@@ -147,7 +174,7 @@ export class Battle {
         const infoToAdd = `${buffInfo}\n${debuffInfo}`
         info += infoToAdd
         this.round++
-        if (info !== "") return info    
+        if (info !== "") return info
     }
     private dealwithBuffs(player: Player, support: "buffs" | "debuffs") {
         let info = ""
@@ -193,14 +220,71 @@ export class Battle {
         if (this.player1.health <= 0) {
             this.player2.xp += 50
             this.player2.selectedFighter!.xp += 100
+            this.player1.health = this.player1.maxHp
+            this.player2.health = this.player2.maxHp
+            this.resetHealthAndSp()
+            saveData()
             return `${this.player2.name} has won!`
         } else if (this.player2.health <= 0) {
             this.player1.xp += 50
             this.player1.selectedFighter!.xp += 100
+            this.resetHealthAndSp()
+            saveData()
             return `${this.player1.name} has won!`
         } else return false
     }
+    private resetHealthAndSp() {
+        this.player1.health = this.player1.maxHp
+        this.player2.health = this.player2.maxHp
+        this.player1.sp = this.player2.maxSp
+        this.player2.sp = this.player2.maxSp
+    }
 }
+
+type ItemType = "healing" | "reflect" | "damage" | "SP" | "support"
+
+export class Item {
+    name: string
+    description: string
+    price: number
+    type: ItemType
+    maxAmount: number
+    owned: number
+    amount?: number
+    reflectType?: "magic" | "physical"
+    constructor(name: string, description: string, price: number, type: ItemType, maxAmount: number, amount?: number, reflectType?: "magic" | "physical") {
+        this.name = name
+        this.description = description
+        this.price = price
+        this.type = type
+        this.maxAmount = maxAmount
+        this.amount = amount
+        this.reflectType = reflectType
+        this.owned = 0
+    }
+    property(player: Player) {
+        const amount = this.amount ?? 0
+        switch (this.type) {
+            case "healing":
+                player.health += amount
+                break
+            case "reflect":
+                if (this.reflectType === "magic") {
+                    player.reflectingMagic = true
+                } else if (this.reflectType === "physical") {
+                    player.reflectingPhysical = true
+                }
+                break
+            case "damage":
+                player.health -= amount
+                break
+            case "SP":
+                player.sp += amount
+                break
+        }
+    }
+}
+
 
 export interface skill {
     damage: "light" | "medium" | "heavy" | "extreme"

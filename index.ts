@@ -1,7 +1,6 @@
 import { Client, GatewayIntentBits, Partials, Message } from 'discord.js'
-import { commandArray } from "./bot/init"
+import { commandArray, intialize } from "./bot/init"
 import { commandType } from './types'
-import { intializePlayers } from './bot/init'
 import { saveData } from './util/helper-functions'
 require('dotenv').config()
 const prefix = process.env.PREFIX as string
@@ -30,7 +29,7 @@ client.on('ready', async () => {
     for (const command of commandArray) {
         commands.set(command.name, command)
     }
-    await intializePlayers(client)
+    await intialize(client)
 })
 
 client.on('messageCreate', async (msg: Message) => {

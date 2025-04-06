@@ -1,10 +1,11 @@
 import * as command from "./commands"
-import { commandType, Fighter, Player, skill } from "../types"
+import { commandType, Fighter, Player, skill, Item } from "../types"
 import fs from 'fs'
-import { client } from ".."
 import { Client } from "discord.js"
 const skilsFile = fs.readFileSync('./data/skills.json', 'utf-8')
 const skills: Record<string, skill> = JSON.parse(skilsFile)
+const itemsFile = fs.readFileSync('./data/items.json', 'utf-8')
+const items: Record<string, Item> = JSON.parse(itemsFile)
 const fightersFile = fs.readFileSync('./data/fighter.json', 'utf-8')
 const fighters: Record<string, Fighter> = JSON.parse(fightersFile)
 const userDataFile = fs.readFileSync('./data/user-data.json', 'utf8')
@@ -47,10 +48,22 @@ export const commandArray: commandType[] = [
     {
         name: "reset",
         run: command.reset
+    },
+    {
+        name: "shop",
+        run: command.shop
+    },
+    {
+        name: "inventory",
+        run: command.inventory
+    },
+    {
+        name: "buy",
+        run: command.buyItem
     }
 ]
 
-export const intializePlayers = async (client: Client) => {
+export const intialize = async (client: Client) => {
     for (const fighter in fighters) {
         fighters[fighter] = new Fighter(
             fighters[fighter].name,
@@ -67,6 +80,18 @@ export const intializePlayers = async (client: Client) => {
                 acc[skill] = skills[skill];
                 return acc;
             }, {})
+        )
+    }
+    for (const item in items) {
+        const itemInfo = items[item]
+        items[item] = new Item(
+            itemInfo.name,
+            itemInfo.description,
+            itemInfo.price,
+            itemInfo.type,
+            itemInfo.maxAmount,
+            itemInfo.amount ?? undefined,
+            itemInfo.reflectType ?? undefined
         )
     }
     for (const player in userData) {
@@ -86,9 +111,22 @@ export const intializePlayers = async (client: Client) => {
         })
         const user = await client.users.fetch(player)
         if (!user) throw new Error(`couldn't find user with id ${player}`)
-        userData[player] = new Player(client, user, 0, [...userData[player].fighters], userData[player].maxSp ?? 100, userData[player].maxHp ?? 100, userData[player].xp ?? 0, userData[player].maxSp, userData[player].maxHp, userData[player].selectedFighter)
+        userData[player] = new Player(
+            client,
+            user,
+            0,
+            [...userData[player].fighters],
+            userData[player].maxSp ?? 100,
+            userData[player].maxHp ?? 100,
+            userData[player].xp ?? 0,
+            userData[player].maxSp,
+            userData[player].maxHp,
+            userData[player].inventory ?? [],
+            userData[player].money ?? 0,
+            userData[player].selectedFighter
+        )
     }
 }
-export { fighters, userData }
+export { fighters, userData, items }
 
 

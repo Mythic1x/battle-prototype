@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, ColorResolvable, ComponentType, Embed, EmbedBuilder, Message } from "discord.js"
-import { Player } from "../types"
-import { fighters, userData } from "./init"
+import { Item, Player } from "../types"
+import { fighters, userData, items } from "./init"
 import { promptUser, saveData, pagedEmbed, executeChecks } from "../util/helper-functions"
 import { battleGame, battles, battleSetup, makeBattleUI } from "./battle"
 import { StringSelectMenuBuilder } from "@discordjs/builders"
@@ -27,10 +27,10 @@ export const signUp = async (client: Client, msg: Message, args: string[]) => {
         if (!answer) return
         if (answer === "no" || answer === "n") {
             msg.channel.send("too bad! creating a date profile with trash guy instead")
-            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.trashGuy], 100, 100, 0, 100, 100)
+            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.trashGuy], 100, 100, 0, 100, 100, [], 0)
             saveData()
         } else if (answer === "yes" || answer === "y") {
-            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.fireGuy, fighters.waterGuy, fighters.iceGuy, fighters.physicalGuy, fighters.lightningGuy, fighters.supportGuy], 100, 100, 1, 100, 100)
+            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.fireGuy, fighters.waterGuy, fighters.iceGuy, fighters.physicalGuy, fighters.lightningGuy, fighters.supportGuy], 100, 100, 1, 100, 100, [], 0)
             saveData()
             msg.channel.send("profile created")
         } else msg.channel.send("not an answer")
@@ -135,6 +135,94 @@ export const selectFighter = async (client: Client, msg: Message, args: string[]
     msg.channel.send(`${selected.name} is now equipped!`)
     saveData()
 }
+export const shop = async (client: Client, msg: Message, args: string[]) => {
+    if (!userData[msg.author.id] || !msg.channel.isSendable()) return
+    const embeds: EmbedBuilder[] = []
+    let embedPage = 1
+    let currentEmbed = new EmbedBuilder()
+        .setTitle("Item Shop")
+        .setAuthor({ name: "🛒" })
+        .setColor("Blurple")
+    for (const item in items) {
+        const itemInfo = items[item]
+        if (currentEmbed.data.fields?.length === 25) {
+            embeds.push(currentEmbed)
+            currentEmbed = new EmbedBuilder()
+            embedPage++
+        }
+        currentEmbed.addFields(
+            { name: `${itemInfo.name}: $${itemInfo.price.toString()} `, value: itemInfo.description }
+        )
+            .setFooter({ text: `Page: ${embedPage.toString()}/${embeds.length + 1}` })
+    }
+    embeds.push(currentEmbed)
+    const row = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId("back")
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(true)
+                .setLabel("◀"),
+            new ButtonBuilder()
+                .setCustomId("forward")
+                .setStyle(ButtonStyle.Primary)
+                .setLabel("▶")
+        )
+    await pagedEmbed(msg, embeds, row)
+}
+
+export const inventory = async (client: Client, msg: Message, args: string[]) => {
+    if (!userData[msg.author.id] || !msg.channel.isSendable() || !msg.member) return
+    if (userData[msg.author.id].inventory.length <= 0) return msg.channel.send("nothing")
+    const color: ColorResolvable = (await msg.author.fetch()).accentColor ?? "Blurple"
+    const icon = msg.author.avatarURL() ?? undefined
+    const inventory = userData[msg.author.id].inventory
+    const embeds: EmbedBuilder[] = []
+    let embedPage = 1
+    let currentEmbed = new EmbedBuilder()
+        .setTitle(`${msg.member.displayName}'s Inventory`)
+        .setAuthor({ name: msg.member?.displayName, iconURL: icon })
+        .setColor(color)
+        .setThumbnail(msg.author.avatarURL())
+    for (const item of inventory) {
+        if (currentEmbed.data.fields?.length === 25) {
+            embeds.push(currentEmbed)
+            currentEmbed = new EmbedBuilder()
+            embedPage++
+        }
+        currentEmbed.addFields(
+            { name: item.name, value: item.owned.toString() }
+        )
+            .setFooter({ text: `Page: ${embedPage.toString()}/${embeds.length + 1}` })
+    }
+    embeds.push(currentEmbed)
+    const row = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId("back")
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(true)
+                .setLabel("◀"),
+            new ButtonBuilder()
+                .setCustomId("forward")
+                .setStyle(ButtonStyle.Primary)
+                .setLabel("▶")
+        )
+    await pagedEmbed(msg, embeds, row)
+}
+
+export const buyItem = async (client: Client, msg: Message, args: string[]) => {
+    if (!userData[msg.author.id] || !msg.channel.isSendable()) return
+    const wantedItem = args.slice(1).join(" ").toLowerCase()
+    const item = Object.values(items).find(v => v.name.toLowerCase() === wantedItem)
+    if (!item) return msg.channel.send("no item found")
+    if (item.price > userData[msg.author.id].money) return msg.channel.send("you can't afford that")
+    if ((userData[msg.author.id].ownsItem(item)?.owned ?? 0) > item.maxAmount) {
+        return msg.channel.send("you have the max of that item")
+    }
+    userData[msg.author.id].addToInventory(item)
+    msg.channel.send(`Purchased ${item.name}`)
+}
 
 export const battle = async (client: Client, msg: Message, args: string[]) => {
     if (!msg.channel.isSendable()) return
@@ -145,5 +233,5 @@ export const battle = async (client: Client, msg: Message, args: string[]) => {
     await msg.channel.send("setting up battle")
     const ui = await makeBattleUI(client, msg, args, battles[msg.channel.id])
     if (!ui) return msg.channel.send("error making battle")
-    battleGame(client, msg, args, battles[msg.channel.id], ui.embed, ui.attackSelect, ui.defendButton, ui.fighterSelect)
+    battleGame(client, msg, args, battles[msg.channel.id], ui.embed, ui.attackSelect, ui.defendButton, ui.fighterSelect, ui.itemSelect)
 }

@@ -1,0 +1,34 @@
+{
+    "healthPotion": {
+        "name": "Health Potion",
+        "description": "Restores 20 health points",
+        "price": 0,
+        "type": "healing",
+        "maxAmount": 99,
+        "amount": 20
+    },
+    "spPestore": {
+        "name": "SP Restore",
+        "description": "Restores 20SP",
+        "price": 0,
+        "type": "SP",
+        "maxAmount": 99,
+        "amount": 20
+    },
+    "magicMirror": {
+        "name": "Magic Mirror",
+        "description": "Deploys a barrier that reflects any magic attack back to your opponent for 1 time",
+        "price": 0,
+        "type": "reflect",
+        "maxAmount": 99,
+        "reflectType": "magic"
+    },
+    "physicalMirror": {
+        "name": "Physical Mirror",
+        "description": "Deploys a barrier that reflects any physical attack back to your opponent for 1 time",
+        "price": 0,
+        "type": "reflect",
+        "maxAmount": 99,
+        "reflectType": "physical"
+    }
+}

@@ -1,9 +1,17 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, ColorResolvable, ComponentType, Embed, EmbedBuilder, GuildMember, Interaction, InteractionCollector, Message, StringSelectMenuInteraction, User } from "discord.js"
-import { Fighter, Player, Battle, skill } from "../types"
-import { fighters, userData } from "./init"
+import { Fighter, Player, Battle, skill, Item } from "../types"
+import { fighters, items, userData } from "./init"
 import { promptUser, saveData, pagedEmbed, findUser, calculateDamage, calculateHeal } from "../util/helper-functions"
 import { SelectMenuBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "@discordjs/builders"
 export const battles: Record<string, Battle> = {}
+const skillMappings: Record<Fighter['type'], string> = {
+    fire: "magic",
+    water: "magic",
+    ice: "magic",
+    lightning: "magic",
+    strength: "strength",
+    support: "magic"
+}
 
 const appendSkillButtons = (skills: Record<string, skill> | undefined, select: StringSelectMenuBuilder, fighter: Fighter, attackedPlayer: Player, attacker: Player) => {
     for (const skill in skills) {
@@ -51,13 +59,36 @@ const appendFighterSelect = (player: Player, select: StringSelectMenuBuilder) =>
     }
 }
 
+const appendItemSelect = (player: Player, otherPlayer: Player, select: StringSelectMenuBuilder) => {
+    if (player.inventory.length <= 0) {
+        select.addOptions(
+            new StringSelectMenuOptionBuilder()
+                .setLabel("None")
+                .setValue("No items")
+        )
+        select.data.disabled = true
+        return
+    }
+    for (const item of player.inventory) {
+        console.log(`${item.name}|${item.type}|${item.amount}${item.reflectType}`)
+        const testString = item.reflectType
+        console.log(testString)
+        select.addOptions(
+            new StringSelectMenuOptionBuilder()
+                .setLabel(item.name)
+                .setDescription(item.description)
+                .setValue(`${item.name}|${item.type}|${item.amount}|${item.reflectType}`)
+        )
+    }
+}
+
 export const battleSetup = async (client: Client, msg: Message, args: string[]) => {
     if (!msg.channel.isSendable()) return
     if (battles[msg.channel.id]) return await msg.channel.send("battle already happening sorry") && false
     const otherPlayerM = await findUser(args, msg, true) as GuildMember
     if (!otherPlayerM) return msg.channel.send("no one found")
     const otherPlayer = otherPlayerM.user
-    if (!otherPlayer || otherPlayer.id === msg.author.id) return
+    // if (!otherPlayer || otherPlayer.id === msg.author.id) return
     if (!userData[otherPlayer.id]) return await msg.channel.send("player does not have any fighters") && false
     if (!userData[otherPlayer.id].selectedFighter) return await msg.channel.send("other player has no fighter equipped") && false
     let answer = await promptUser(msg, args, `${otherPlayer.toString()} ${msg.member?.displayName} has challenged you to a duel! What do you say (y/n)`, otherPlayer)
@@ -89,22 +120,26 @@ export const makeBattleUI = async (client: Client, msg: Message, args: string[],
         .addFields({ name: battle.player2.name, value: player2StatsString, inline: true })
         .setFooter({ text: battle.turnString, iconURL: battle.turnUser.avatarURL() as string })
     const attackSelect = new StringSelectMenuBuilder()
-        .setCustomId(`${battle.turnUser.id} | ability`)
+        .setCustomId(`ability`)
         .setPlaceholder('Ability')
     appendSkillButtons(battle.turnUser.selectedFighter?.skills, attackSelect, battle.turnUser.selectedFighter!, otherPlayer, battle.turnUser)
     const defendButton = new ButtonBuilder()
         .setCustomId(`defend`)
-        .setLabel("defend")
+        .setLabel("Defend")
         .setStyle(ButtonStyle.Secondary)
     const fighterSelect = new StringSelectMenuBuilder()
-        .setCustomId(`${battle.turnUser.id} | change`)
+        .setCustomId(`change`)
         .setPlaceholder("Change Fighter")
     appendFighterSelect(battle.turnUser, fighterSelect)
-    return { embed, attackSelect, defendButton, fighterSelect }
+    const itemSelect = new StringSelectMenuBuilder()
+        .setCustomId("item")
+        .setPlaceholder("Item")
+    appendItemSelect(battle.turnUser, otherPlayer, itemSelect)
+    return { embed, attackSelect, defendButton, fighterSelect, itemSelect }
 }
 
 
-export const battleGame = async (client: Client, msg: Message, args: string[], battle: Battle, embed: EmbedBuilder, attackSelect: StringSelectMenuBuilder, defenseButton: ButtonBuilder, fighterSelect: StringSelectMenuBuilder) => {
+export const battleGame = async (client: Client, msg: Message, args: string[], battle: Battle, embed: EmbedBuilder, attackSelect: StringSelectMenuBuilder, defenseButton: ButtonBuilder, fighterSelect: StringSelectMenuBuilder, itemSelect: StringSelectMenuBuilder) => {
     if (!msg.channel.isSendable()) return
     const timer = setTimeout(() => {
         if (!msg.channel.isSendable()) return
@@ -117,28 +152,32 @@ export const battleGame = async (client: Client, msg: Message, args: string[], b
         .addComponents(defenseButton)
     const fighterRow = new ActionRowBuilder<SelectMenuBuilder>()
         .addComponents(fighterSelect)
-    const message = await msg.channel.send({ embeds: [embed], components: [attackRow, buttonRow, fighterRow] })
+    const itemRow = new ActionRowBuilder<SelectMenuBuilder>()
+        .addComponents(itemSelect)
+    const message = await msg.channel.send({ embeds: [embed], components: [attackRow, buttonRow, fighterRow, itemRow] })
     const menuCollector = message.createMessageComponentCollector({ componentType: ComponentType.StringSelect })
     const buttonCollector = message.createMessageComponentCollector({ componentType: ComponentType.Button })
     menuCollector.on('collect', async i => {
-        const idArgs = i.customId.split("|")
-        const action = idArgs[1].trim()
+        const action = i.customId
         const abilityType = i.values[0].split("|")[0]
         if (i.user.id === battle.turnUser.id) {
             const otherPlayer = battle.turnUser.id === battle.player1.id ? battle.player2 : battle.player1
             if (action === "ability") {
                 if (abilityType === "attack") {
-                    await handleAttack(i, battle, msg, otherPlayer, timer, args, client, menuCollector, attackRow, buttonRow, fighterRow)
+                    await handleAttack(i, battle, msg, otherPlayer, timer, args, client, menuCollector, attackRow, buttonRow, fighterRow, itemRow)
                 }
                 if (abilityType === "buff") {
-                    await handleBuff(i, battle, msg, timer, args, client, attackRow, buttonRow, fighterRow)
+                    await handleBuff(i, battle, msg, timer, args, client, attackRow, buttonRow, fighterRow, itemRow)
                 }
                 if (abilityType === "debuff") {
-                    await handleDebuff(i, battle, msg, timer, otherPlayer, args, client, attackRow, buttonRow, fighterRow)
+                    await handleDebuff(i, battle, msg, timer, otherPlayer, args, client, attackRow, buttonRow, fighterRow, itemRow)
                 }
                 if (abilityType === "heal") {
-                    await handleHeal(i, battle, msg, timer, args, client, attackRow, buttonRow, fighterRow)
+                    await handleHeal(i, battle, msg, timer, args, client, attackRow, buttonRow, fighterRow, itemRow)
                 }
+            }
+            if (action === "item") {
+                await handleItem(i, battle, msg, timer, otherPlayer, args, client, menuCollector, attackRow, buttonRow, fighterRow, itemRow)
             }
             if (action === "change") {
                 const fighterName = i.values[0]
@@ -182,7 +221,8 @@ const handleAttack = async (
     menuCollector: InteractionCollector<StringSelectMenuInteraction> | InteractionCollector<StringSelectMenuInteraction<"cached">>,
     attackRow: ActionRowBuilder<SelectMenuBuilder>,
     buttonRow: ActionRowBuilder<ButtonBuilder>,
-    fighterRow: ActionRowBuilder<SelectMenuBuilder>
+    fighterRow: ActionRowBuilder<SelectMenuBuilder>,
+    itemRow: ActionRowBuilder<SelectMenuBuilder>
 ) => {
     const values = i.values[0].split("|").slice(1)
     const damage = Number(values[0])
@@ -191,16 +231,8 @@ const handleAttack = async (
     const name = values[3]
     const dodgeChance = otherPlayer.selectedFighter!.dexterity * 0.5
     const critChance = battle.turnUser.selectedFighter!.luck * 0.3
-    const skillMappings: Record<Fighter['type'], string> = {
-        fire: "magic",
-        water: "magic",
-        ice: "magic",
-        lightning: "magic",
-        strength: "strength",
-        support: "magic"
-    }
     if (battle.turnUser.sp - spCost < 0) {
-       return i.reply({ content: "You do not have enough SP", ephemeral: true })
+        return i.reply({ content: "You do not have enough SP", ephemeral: true })
     }
     let desc = ""
     battle.turnUser.sp -= spCost
@@ -236,7 +268,8 @@ const handleAttack = async (
     const ui = await makeBattleUI(client, msg, args, battle, desc)
     attackRow.setComponents(ui?.attackSelect as SelectMenuBuilder)
     fighterRow.setComponents(ui!.fighterSelect)
-    i.update({ embeds: [ui!.embed], components: [attackRow, buttonRow, fighterRow] })
+    itemRow.setComponents(ui!.itemSelect)
+    i.update({ embeds: [ui!.embed], components: [attackRow, buttonRow, fighterRow, itemRow] })
     timer.refresh()
 }
 
@@ -249,7 +282,8 @@ const handleBuff = async (
     client: Client,
     attackRow: ActionRowBuilder<SelectMenuBuilder>,
     buttonRow: ActionRowBuilder<ButtonBuilder>,
-    fighterRow: ActionRowBuilder<SelectMenuBuilder>
+    fighterRow: ActionRowBuilder<SelectMenuBuilder>,
+    itemRow: ActionRowBuilder<SelectMenuBuilder>
 ) => {
     const values = i.values[0].split("|").slice(1)
     const amount = Number(values[0])
@@ -265,7 +299,7 @@ const handleBuff = async (
     battle.turnUser.sp -= spCost
     if (battle.turnUser.buffs.buffed === true && battle.turnUser.buffs[toBuff].amount) {
         console.log(battle.turnUser.buffs[toBuff])
-       return  i.reply({ content: `your ${toBuff} is already buffed`, ephemeral: true })
+        return i.reply({ content: `your ${toBuff} is already buffed`, ephemeral: true })
     }
     desc = `${battle.turnUser.name} has buffed their ${toBuff}`
     battle.turnUser.buffs.buffed = true
@@ -275,10 +309,11 @@ const handleBuff = async (
     if (info) desc += `\n${info}`
     const ui = await makeBattleUI(client, msg, args, battle, desc)
     if (!ui) return console.log('error making ui')
-    const { embed, attackSelect, defendButton, fighterSelect } = ui
+    const { embed, attackSelect, defendButton, fighterSelect, itemSelect } = ui
     attackRow.setComponents(attackSelect)
     fighterRow.setComponents(fighterSelect)
-    i.update({ embeds: [embed], components: [attackRow, buttonRow, fighterRow] })
+    itemRow.setComponents(itemSelect)
+    i.update({ embeds: [embed], components: [attackRow, buttonRow, fighterRow, itemRow] })
     timer.refresh()
 }
 
@@ -292,7 +327,8 @@ const handleDebuff = async (
     client: Client,
     attackRow: ActionRowBuilder<SelectMenuBuilder>,
     buttonRow: ActionRowBuilder<ButtonBuilder>,
-    fighterRow: ActionRowBuilder<SelectMenuBuilder>
+    fighterRow: ActionRowBuilder<SelectMenuBuilder>,
+    itemRow: ActionRowBuilder<SelectMenuBuilder>
 ) => {
     const values = i.values[0].split("|").slice(1)
     const amount = Number(values[0])
@@ -317,10 +353,11 @@ const handleDebuff = async (
     if (info) desc += `\n${info}`
     const ui = await makeBattleUI(client, msg, args, battle, desc)
     if (!ui) return console.log('error making ui')
-    const { embed, attackSelect, defendButton, fighterSelect } = ui
+    const { embed, attackSelect, defendButton, fighterSelect, itemSelect } = ui
     attackRow.setComponents(attackSelect)
     fighterRow.setComponents(fighterSelect)
-    i.update({ embeds: [embed], components: [attackRow, buttonRow, fighterRow] })
+    itemRow.setComponents(itemSelect)
+    i.update({ embeds: [embed], components: [attackRow, buttonRow, fighterRow, itemRow] })
     timer.refresh()
 }
 
@@ -333,8 +370,8 @@ const handleHeal = async (
     client: Client,
     attackRow: ActionRowBuilder<SelectMenuBuilder>,
     buttonRow: ActionRowBuilder<ButtonBuilder>,
-    fighterRow: ActionRowBuilder<SelectMenuBuilder>
-
+    fighterRow: ActionRowBuilder<SelectMenuBuilder>,
+    itemRow: ActionRowBuilder<SelectMenuBuilder>
 ) => {
     const values = i.values[0].split("|").slice(1)
     const toHeal = Number(values[0])
@@ -353,9 +390,93 @@ const handleHeal = async (
     if (info) desc += `\n${info}`
     const ui = await makeBattleUI(client, msg, args, battle, desc)
     if (!ui) return console.log('error making ui')
-    const { embed, attackSelect, defendButton, fighterSelect } = ui
+    const { embed, attackSelect, defendButton, fighterSelect, itemSelect } = ui
     attackRow.setComponents(attackSelect)
     fighterRow.setComponents(fighterSelect)
-    i.update({ embeds: [embed], components: [attackRow, buttonRow, fighterRow] })
+    itemRow.setComponents(itemSelect)
+    i.update({ embeds: [embed], components: [attackRow, buttonRow, fighterRow, itemRow] })
+    timer.refresh()
+}
+
+const handleItem = async (
+    i: StringSelectMenuInteraction,
+    battle: Battle,
+    msg: Message,
+    timer: NodeJS.Timeout,
+    otherPlayer: Player,
+    args: string[],
+    client: Client,
+    menuCollector: InteractionCollector<StringSelectMenuInteraction> | InteractionCollector<StringSelectMenuInteraction<"cached">>,
+    attackRow: ActionRowBuilder<SelectMenuBuilder>,
+    buttonRow: ActionRowBuilder<ButtonBuilder>,
+    fighterRow: ActionRowBuilder<SelectMenuBuilder>,
+    itemRow: ActionRowBuilder<SelectMenuBuilder>
+) => {
+    const values = i.values[0].split("|")
+    const itemType = values[1] as Item['type']
+    const itemName = values[0]
+    //check if there's an amount
+    let amount = Number(values[2]) || undefined
+    //check if the item has a reflect type
+    const reflectType = (values[3].toString() || undefined) as Item['reflectType']
+    const item = battle.turnUser.inventory.find(v => v.name === itemName)
+    if (!item) return i.reply("something went wrong")
+    let desc = ""
+    switch (itemType) {
+        case "healing":
+            if (amount) {
+                if (battle.turnUser.health + amount > battle.turnUser.maxHp) {
+                    const remaining = battle.turnUser.maxHp - battle.turnUser.health
+                    amount = remaining
+                }
+                battle.turnUser.health += amount
+                desc += `${battle.turnUser.displayName} used ${itemName} and healed for ${amount}`
+            } else return i.reply("something went wrong")
+            break
+        case "SP":
+            if (amount) {
+                if (battle.turnUser.sp + amount > battle.turnUser.maxSp) {
+                    const remaining = battle.turnUser.maxSp - battle.turnUser.sp
+                    amount = remaining
+                }
+                battle.turnUser.sp += amount
+                desc += `${battle.turnUser.displayName} used ${itemName} and regained ${amount}SP`
+            } else return i.reply("something went wrong")
+            break
+        case "reflect":
+            if (reflectType) {
+                //set the relevant reflecting variable to true
+                reflectType === "magic" ? battle.turnUser.reflectingMagic = true : battle.turnUser.reflectingPhysical = true
+                desc += `${battle.turnUser.displayName} is now reflecting ${reflectType} attacks`
+            } else return i.reply("something went wrong")
+            break
+        case "damage":
+            if (amount) {
+                otherPlayer.health -= amount
+                desc += `${battle.turnUser.displayName} damaged ${otherPlayer.displayName} with ${itemName} for ${amount}`
+                const endCheck = battle.checkForEnd()
+                if (endCheck !== false && msg.channel.isSendable()) {
+                    msg.channel.send(endCheck)
+                    const ui = await makeBattleUI(client, msg, args, battle, desc)
+                    if (!ui) return
+                    i.update({ embeds: [ui.embed], components: [] })
+                    menuCollector.stop()
+                    delete battles[msg.channel.id]
+                    saveData()
+                    clearTimeout(timer)
+                    return
+                }
+            } else return i.reply("something went wrong")
+    }
+    const info = battle.endTurn()
+    battle.turnUser.removeFromInventory(item)
+    if (info) desc += `\n${info}`
+    const ui = await makeBattleUI(client, msg, args, battle, desc)
+    if (!ui) return console.log('error making ui')
+    const { embed, attackSelect, defendButton, fighterSelect, itemSelect } = ui
+    attackRow.setComponents(attackSelect)
+    fighterRow.setComponents(fighterSelect)
+    itemRow.setComponents(itemSelect)
+    i.update({ embeds: [embed], components: [attackRow, buttonRow, fighterRow, itemRow] })
     timer.refresh()
 }
