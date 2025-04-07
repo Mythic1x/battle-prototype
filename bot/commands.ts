@@ -27,10 +27,10 @@ export const signUp = async (client: Client, msg: Message, args: string[]) => {
         if (!answer) return
         if (answer === "no" || answer === "n") {
             msg.channel.send("too bad! creating a date profile with trash guy instead")
-            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.trashGuy], 100, 100, 0, 100, 100, [], 0)
+            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.trashGuy], 100, 100, 0, 100, 100, [], 0, 50)
             saveData()
         } else if (answer === "yes" || answer === "y") {
-            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.fireGuy, fighters.waterGuy, fighters.iceGuy, fighters.physicalGuy, fighters.lightningGuy, fighters.supportGuy], 100, 100, 1, 100, 100, [], 0)
+            userData[msg.author.id] = new Player(client, msg.author, 0, [fighters.fireGuy, fighters.waterGuy, fighters.iceGuy, fighters.physicalGuy, fighters.lightningGuy, fighters.supportGuy], 100, 100, 1, 100, 100, [], 0, 50)
             saveData()
             msg.channel.send("profile created")
         } else msg.channel.send("not an answer")
@@ -53,12 +53,14 @@ export const displayFighters = async (client: Client, msg: Message, args: string
     const icon = msg.author.avatarURL() ?? undefined
     for (let i = 0; i < length; i++) {
         const fighter = userData[msg.author.id].fighters[i]
+        let levelUpText = `${fighter.xpForLevelUp.toString()}XP until level up`
+        if (fighter.xp >= fighter.xpForLevelUp) levelUpText = `${fighter.name} can level up!`
         const embed = new EmbedBuilder()
             .setColor("Blurple")
             .setTitle(fighter.name)
             .setAuthor({ iconURL: icon, name: msg.author.displayName })
             .setThumbnail(msg.author.avatarURL())
-            .setDescription(`Level: ${fighter.level.toString()}, XP: ${fighter.xp.toString()}`)
+            .setDescription(`Level: ${fighter.level.toString()}, XP: ${fighter.xp.toString()}, ${levelUpText}`)
             .addFields({ name: "Strength", value: fighter.strength.toString() })
             .addFields({ name: "Magic", value: fighter.magic.toString() })
             .addFields({ name: "Dexterity", value: fighter.dexterity.toString() })
@@ -90,6 +92,10 @@ export const displayStats = async (client: Client, msg: Message, args: string[])
     const fetched = await msg.author.fetch()
     const icon = msg.author.avatarURL() ?? undefined
     const color: ColorResolvable = fetched.accentColor ?? "Blurple"
+    let levelUpText = player.toLevelUp
+    if (typeof levelUpText === 'number') {
+        levelUpText = `${player.toLevelUp.toString()}XP until level up`
+    }
     const embed = new EmbedBuilder()
         .setColor(color)
         .setTitle("Stats")
@@ -99,6 +105,7 @@ export const displayStats = async (client: Client, msg: Message, args: string[])
         .addFields({ name: "HP", value: player.health.toString() })
         .addFields({ name: "SP", value: player.sp.toString() })
         .addFields({ name: "Fighters", value: player.fighters.length.toString() })
+        .setFooter({ text: levelUpText })
     msg.channel.send({ embeds: [embed] })
 }
 
@@ -114,10 +121,22 @@ export const levelUp = async (client: Client, msg: Message, args: string[]) => {
     answer = answer.toLowerCase()
     if (!ownedFighterNames.includes(answer)) return msg.channel.send("you do not own that")
     const selected = userData[msg.author.id].fighters.find(e => e.name.toLowerCase() === answer)
-    console.log(selected)
-    selected?.levelUp()
+    if (!selected) return msg.channel.send("error occured")
+    const currentSkills = Object.keys(selected.skills).length
+    const leveledUp = selected.levelUp()
+    if (!leveledUp) return msg.channel.send("Not enough XP")
     msg.channel.send(`${answer} has leveled up!`)
+    if (Object.keys(selected.skills).length > currentSkills) {
+        msg.channel.send(`${answer} learned a new skill!`)
+    }
     saveData()
+}
+
+export const playerLevelUp = async (client: Client, msg: Message, args: string[]) => {
+    if (!userData[msg.author.id] || !msg.channel.isSendable()) return
+    const leveledUp = userData[msg.author.id].levelUp()
+    if (!leveledUp) return msg.channel.send("not enough xp to level up")
+    msg.channel.send("leveled up!")
 }
 
 export const selectFighter = async (client: Client, msg: Message, args: string[]) => {

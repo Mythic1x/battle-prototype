@@ -142,11 +142,6 @@ export const makeBattleUI = async (client: Client, msg: Message, args: string[],
 
 export const battleGame = async (client: Client, msg: Message, args: string[], battle: Battle, embed: EmbedBuilder, attackSelect: StringSelectMenuBuilder, defenseButton: ButtonBuilder, fighterSelect: StringSelectMenuBuilder, itemSelect: StringSelectMenuBuilder) => {
     if (!msg.channel.isSendable()) return
-    const timer = setTimeout(() => {
-        if (!msg.channel.isSendable()) return
-        msg.channel.send("Battle ending due to inactivity")
-        delete battles[msg.channel.id]
-    }, 60000)
     const attackRow = new ActionRowBuilder<SelectMenuBuilder>()
         .addComponents(attackSelect)
     const buttonRow = new ActionRowBuilder<ButtonBuilder>()
@@ -158,6 +153,14 @@ export const battleGame = async (client: Client, msg: Message, args: string[], b
     const message = await msg.channel.send({ embeds: [embed], components: [attackRow, buttonRow, fighterRow, itemRow] })
     const menuCollector = message.createMessageComponentCollector({ componentType: ComponentType.StringSelect })
     const buttonCollector = message.createMessageComponentCollector({ componentType: ComponentType.Button })
+    const timer = setTimeout(() => {
+        if (!msg.channel.isSendable()) return
+        msg.channel.send("Battle ending due to inactivity")
+        menuCollector.stop()
+        buttonCollector.stop()
+        msg.edit({ embeds: [embed], components: [] })
+        delete battles[msg.channel.id]
+    }, 60000)
     menuCollector.on('collect', async i => {
         const action = i.customId
         const abilityType = i.values[0].split("|")[0]

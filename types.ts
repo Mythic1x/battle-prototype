@@ -1,5 +1,6 @@
 import { Message, Client, User } from "discord.js"
-import { calculateDamage, saveData } from "./util/helper-functions"
+import { saveData } from "./util/helper-functions"
+import { skills } from "./bot/init"
 type FighterType = "strength" | "fire" | "water" | "ice" | "lightning" | "support"
 interface Buffs {
     buffed: boolean
@@ -41,8 +42,11 @@ export class Fighter {
     luck: number
     dexterity: number
     xp: number
+    xpForLevelUp: number
     skills: Record<string, skill>
-    constructor(name: string, type: FighterType, level: number, strength: number, magic: number, luck: number, dexterity: number, xp: number, skills: Record<string, skill>) {
+    learnNewSkillsAt: number[]
+    learnableSkills: string[]
+    constructor(name: string, type: FighterType, level: number, strength: number, magic: number, luck: number, dexterity: number, xp: number, xpForLevelUp: number, skills: Record<string, skill>, learnNewSkillsAt: number[], learnableSkills: string[]) {
         this.name = name
         this.type = type
         this.level = level
@@ -51,9 +55,13 @@ export class Fighter {
         this.luck = luck
         this.dexterity = dexterity
         this.xp = xp
+        this.xpForLevelUp = xpForLevelUp
         this.skills = skills
+        this.learnNewSkillsAt = learnNewSkillsAt
+        this.learnableSkills = learnableSkills
     }
     levelUp() {
+        if (this.xp < this.xpForLevelUp) return false
         if (this.type !== "strength") {
             this.magic += 3
             this.strength += 1
@@ -64,6 +72,15 @@ export class Fighter {
         this.luck += 3
         this.dexterity += 3
         this.level += 1
+        this.xpForLevelUp *= 2
+        if (this.level === this.learnNewSkillsAt[0]) {
+            this.learnNewSkillsAt.shift()
+            if (this.learnableSkills.length > 0) {
+                const newSkill = this.learnableSkills.shift() as string
+                this.skills[newSkill] = skills[newSkill]
+            }
+        }
+        return true
         saveData()
     }
 }
@@ -78,6 +95,7 @@ export class Player extends User {
     maxHp: number
     inventory: Item[]
     money: number
+    xpForLevelUp: number
     selectedFighter?: Fighter
     defending: boolean
     name: string
@@ -85,7 +103,7 @@ export class Player extends User {
     reflectingPhysical: boolean
     buffs: Buffs
     debuffs: Debuffs
-    constructor(client: Client<true>, data: User, level: number, fighters: Fighter[], health: number, sp: number, xp: number, maxSp: number, maxHp: number, inventory: Item[], money: number, selectedFighter?: Fighter) {
+    constructor(client: Client<true>, data: User, level: number, fighters: Fighter[], health: number, sp: number, xp: number, maxSp: number, maxHp: number, inventory: Item[], money: number, xpForLevelUp: number, selectedFighter?: Fighter) {
         //@ts-ignore not dealing with discordjs's bs
         super(client, data)
         this.level = level
@@ -97,6 +115,7 @@ export class Player extends User {
         this.maxHp = maxHp
         this.inventory = inventory
         this.money = money
+        this.xpForLevelUp = xpForLevelUp
         this.selectedFighter = selectedFighter
         //placeholder incase the name doesn't get set properly in battleSetup
         this.name = this.displayName
@@ -116,15 +135,19 @@ export class Player extends User {
             dexterity: { amount: 0, length: 0, },
         }
     }
+    get toLevelUp() {
+        return this.xp >= this.xpForLevelUp ? "Can level up!" : this.xpForLevelUp - this.xp
+    }
     levelUp() {
-        if (!this.maxHp) {
-            this.maxHp = 100
-            this.maxSp = 100
+        if (this.xp < this.xpForLevelUp) {
+            return false
         }
         this.maxSp += 20
         this.maxHp += 20
         this.level += 1
+        this.xpForLevelUp *= 2
         saveData()
+        return true
     }
     addToInventory(item: Item) {
         const itemToAdd = this.inventory.find(v => v.name === item.name)
@@ -180,6 +203,7 @@ export class Battle {
         let info = ""
         if (support === "buffs" && player.buffs.buffed === true) {
             for (const buff in player.buffs) {
+                //the thing typescript is complaining about is handled here
                 if (typeof player.buffs[buff as keyof Buffs] === "boolean") continue
                 //@ts-ignore
                 if (player.buffs[buff as keyof Buffs].amount) {
@@ -218,16 +242,16 @@ export class Battle {
     }
     checkForEnd() {
         if (this.player1.health <= 0) {
-            this.player2.xp += 50
-            this.player2.selectedFighter!.xp += 100
-            this.player1.health = this.player1.maxHp
-            this.player2.health = this.player2.maxHp
+            this.player2.xp += 25
+            this.player2.money += 25
+            this.player2.selectedFighter!.xp += 25
             this.resetHealthAndSp()
             saveData()
             return `${this.player2.name} has won!`
         } else if (this.player2.health <= 0) {
-            this.player1.xp += 50
-            this.player1.selectedFighter!.xp += 100
+            this.player1.xp += 25
+            this.player1.money += 25
+            this.player1.selectedFighter!.xp += 25
             this.resetHealthAndSp()
             saveData()
             return `${this.player1.name} has won!`

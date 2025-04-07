@@ -30,8 +30,11 @@ export const commandArray: commandType[] = [
     },
     {
         name: "levelup",
-        run: command.levelUp,
-        disabled: true,
+        run: command.playerLevelUp,
+    },
+    {
+        name: "flevelup",
+        run: command.levelUp
     },
     {
         name: "battle",
@@ -74,12 +77,15 @@ export const intialize = async (client: Client) => {
             fighters[fighter].luck,
             fighters[fighter].dexterity,
             fighters[fighter].xp,
+            fighters[fighter].xpForLevelUp ?? 50,
             //imported as an array but turned into an object here
             //@ts-ignore
-            fighters[fighter].skills.reduce((acc: any, skill: any) => {
+            fighters[fighter].skills.reduce((acc: Record<string, skill>, skill: string) => {
                 acc[skill] = skills[skill];
                 return acc;
-            }, {})
+            }, {}),
+            fighters[fighter].learnNewSkillsAt,
+            fighters[fighter].learnableSkills,
         )
     }
     for (const item in items) {
@@ -106,7 +112,10 @@ export const intialize = async (client: Client) => {
                 fighter.luck,
                 fighter.dexterity,
                 fighter.xp,
-                fighter.skills
+                fighter.xpForLevelUp ?? 50,
+                fighter.skills,
+                fighter.learnNewSkillsAt ?? [10, 15, 20],
+                fighter.learnableSkills ?? [],
             )
         })
         const user = await client.users.fetch(player)
@@ -123,10 +132,11 @@ export const intialize = async (client: Client) => {
             userData[player].maxHp,
             userData[player].inventory ?? [],
             userData[player].money ?? 0,
+            userData[player].xpForLevelUp ?? 50,
             userData[player].selectedFighter
         )
     }
 }
-export { fighters, userData, items }
+export { fighters, userData, items, skills }
 
 
