@@ -33,7 +33,7 @@ const appendSkillButtons = (skills: Record<string, skill> | undefined, select: S
                     new StringSelectMenuOptionBuilder()
                         .setLabel(skills[skill].name)
                         .setDescription(`${skills[skill].description} ${skills[skill].spCost}SP`)
-                        .setValue(`${skills[skill].method}|${amount}|${length}|${skills.spCost}|${skills[skill].type}|${skills[skill].name}|${skills[skill].buffValues!.stat}`)
+                        .setValue(`${skills[skill].method}|${amount}|${length}|${skills[skill].spCost}|${skills[skill].type}|${skills[skill].name}|${skills[skill].buffValues!.stat}`)
                 )
                 break
             case "heal":
